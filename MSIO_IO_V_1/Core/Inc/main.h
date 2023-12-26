@@ -63,6 +63,10 @@ void Error_Handler(void);
 #define ADC_0_GPIO_Port GPIOA
 #define U1_74HC_S3_Pin GPIO_PIN_1
 #define U1_74HC_S3_GPIO_Port GPIOA
+#define NRF_CE_Pin GPIO_PIN_0
+#define NRF_CE_GPIO_Port GPIOB
+#define NRF_CSN_Pin GPIO_PIN_1
+#define NRF_CSN_GPIO_Port GPIOB
 #define U1_74HC_S0_Pin GPIO_PIN_11
 #define U1_74HC_S0_GPIO_Port GPIOB
 #define U1_74HC_S1_Pin GPIO_PIN_12
