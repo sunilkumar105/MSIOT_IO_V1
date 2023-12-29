@@ -77,7 +77,7 @@ void Choose_Channel(uint8_t Channel_Num) {
 void Manage_NRF_Data(void) {
 	char received_data_from_gateway[50] = "";
 	Print_Debug_Data("\n DATA RECEIVED FROM NRF::>> ");
-	NRF24_read(received_data_from_gateway, 6); //store received data
+	NRF24_read(received_data_from_gateway, 10); //store received data
 	Print_Debug_Data(received_data_from_gateway);
 
 	/*
@@ -90,8 +90,9 @@ void Manage_NRF_Data(void) {
 	 4 = WRITE RELAYS
 	 */
 	char rcvd_node_id[2];
-	char rcvd_command;
-	rcvd_command = (int) received_data_from_gateway[2];
+	uint8_t rcvd_command;
+
+	rcvd_command = received_data_from_gateway[2] - '0';
 
 	memcpy(rcvd_node_id, received_data_from_gateway, 2);
 	//============CHECK IF NODE MATCH WITH ID======================//
@@ -106,7 +107,7 @@ void Manage_NRF_Data(void) {
 	uint8_t Actutate_GPIO = Get_GPIO_Num_For_Actuation(
 			received_data_from_gateway);
 	GPIO_PinState GPIO_STATE;
-	uint8_t GPIO_STATE_INT = (int) received_data_from_gateway[5];
+	uint8_t GPIO_STATE_INT = received_data_from_gateway[5] - '0';
 	if (GPIO_STATE_INT) {
 
 		GPIO_STATE = GPIO_PIN_SET;
