@@ -11,6 +11,7 @@
 char my_node_id[2] = "01";
 extern UART_HandleTypeDef huart1;
 extern ADC_HandleTypeDef hadc1;
+extern TIM_HandleTypeDef htim4;
 
 void Print_Debug_Data(char *Debug_Msg) {
 	HAL_UART_Transmit(&huart1, (uint8_t*) Debug_Msg, strlen(Debug_Msg), 100);
@@ -83,11 +84,10 @@ void Manage_NRF_Data(void) {
 	/*
 	 //check the command and ACT accordingly
 	 //	COMMAND LIST
-	 0 = WRITE GPIO DIGITAL
-	 1 = WRITE ANALOG
-	 2 = READ GPIO DIGITAL
-	 3 = READ ANALOG
-	 4 = WRITE RELAYS
+	 COMMAND_WRITE_GPIO_ANALOG = 1,
+	 COMMAND_READ_GPIO_DIGITAL = 2,
+	 COMMAND_READ_GPIO_ANALOG = 3,
+	 COMMAND_WRITE_RELAYS = 4
 	 */
 	char rcvd_node_id[2];
 	uint8_t rcvd_command;
@@ -122,9 +122,21 @@ void Manage_NRF_Data(void) {
 	if (rcvd_command == COMMAND_WRITE_GPIO_ANALOG) {
 
 		//SWITCH ON THE BASE OF GPIO NUM WRITE GPIO ANALOG
-		if (!((Actutate_GPIO == 1) || (Actutate_GPIO == 0))) {
-			Print_Debug_Data("\n Wrong GPIOI NUM FOR ANALOG WRITE");
+		if (((Actutate_GPIO == 1) || (Actutate_GPIO == 0))) {
+
 			//TRY WRITING ANALOG DATA HERE WITH PWM / ANALOG IC
+			//WORKING WITH PWM FOR NOW
+			/*
+			 * Read the VOLTAGE SCALE BETWEEN 0 - 12 VOLT
+			 * WRITE IT TO CCR_RESPECTIVE_TIM
+			 * */
+			int PWM_Value_To_Write = Get_PWM_Val_To_Write(
+					received_data_from_gateway);
+			TIM4->CCR1 = PWM_Value_To_Write;
+			HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+
+		} else {
+			Print_Debug_Data("\n Wrong GPIOI NUM FOR ANALOG WRITE");
 		}
 	}
 	if (rcvd_command == COMMAND_READ_GPIO_DIGITAL) {
@@ -162,6 +174,24 @@ uint8_t Get_GPIO_Num_For_Actuation(char received_data_from_gateway[]) {
 	GPIO_TO_WRITE[1] = received_data_from_gateway[4];
 	int GPIO_Num_For_Actuation = atoi(GPIO_TO_WRITE);
 	return GPIO_Num_For_Actuation;
+}
+/*
+ @brief This function will take two chracter array and will return the ANALOG_VOLTAGE TO WRITE
+ */
+int Get_PWM_Val_To_Write(char received_data_from_gateway[]) {
+	char PWM_VAL_CHAR[2];
+	PWM_VAL_CHAR[0] = received_data_from_gateway[5];
+	PWM_VAL_CHAR[1] = received_data_from_gateway[6];
+	int PWM_VAL = atoi(PWM_VAL_CHAR);
+	/* SCALE IT WITH 0 - 1000
+	 * SUBTRACT THE VALUE FROM 1000
+	 * */
+	float Temp = PWM_VAL;
+	Temp = (float) PWM_VAL / 12; //MAXIMUNM VOLTAGE OF ANALOG WRITE
+	Temp = Temp * 1000;
+	int intValue = (int) Temp;
+	intValue = 1000 - intValue;
+	return intValue;
 }
 
 /*

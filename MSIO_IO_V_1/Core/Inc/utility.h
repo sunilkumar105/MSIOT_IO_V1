@@ -25,6 +25,7 @@ enum COMMAND_LIST {
 };
 
 uint8_t Get_GPIO_Num_For_Actuation(char received_data_from_gateway[]);
+int Get_PWM_Val_To_Write(char received_data_from_gateway[]);
 void Print_Debug_Data(char *Debug_Msg);
 void Choose_Channel(uint8_t Channel_Num);
 void Manage_NRF_Data(void);
