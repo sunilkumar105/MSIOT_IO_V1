@@ -14,6 +14,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <nrf_helper.h>
 
 #define Debug_Data_Port huart1
 
@@ -31,4 +32,5 @@ void Choose_Channel(uint8_t Channel_Num);
 void Manage_NRF_Data(void);
 uint8_t Read_Gpio_Digital(uint8_t GPIO_num);
 uint32_t Read_GPIO_ANALOG(uint8_t GPIO_num);
+void Transmitt_reply_to_gateway(char *msg);
 #endif /* INC_UTILITY_H_ */

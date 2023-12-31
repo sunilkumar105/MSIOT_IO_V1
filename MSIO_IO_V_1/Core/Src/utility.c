@@ -117,7 +117,6 @@ void Manage_NRF_Data(void) {
 	} else {
 		Print_Debug_Data("\nERROR GATING GPIO STATE");
 	}
-
 	//===========CHECK FOR COMMAND AND ACT ACCORDINGLY=====//
 	if (rcvd_command == COMMAND_WRITE_GPIO_ANALOG) {
 
@@ -130,23 +129,22 @@ void Manage_NRF_Data(void) {
 			 * Read the VOLTAGE SCALE BETWEEN 0 - 12 VOLT
 			 * WRITE IT TO CCR_RESPECTIVE_TIM
 			 * */
-			int PWM_Value_To_Write = Get_PWM_Val_To_Write(
-					received_data_from_gateway);
-			TIM4->CCR1 = PWM_Value_To_Write;
-			HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
-
+			int PWM_Value_To_Write;
+			switch (Actutate_GPIO) {
+			case 1:
+				PWM_Value_To_Write = Get_PWM_Val_To_Write(
+						received_data_from_gateway);
+				TIM4->CCR1 = PWM_Value_To_Write;
+				break;
+			case 2:
+				PWM_Value_To_Write = Get_PWM_Val_To_Write(
+						received_data_from_gateway);
+				TIM4->CCR2 = PWM_Value_To_Write;
+				break;
+			}
 		} else {
 			Print_Debug_Data("\n Wrong GPIOI NUM FOR ANALOG WRITE");
 		}
-	}
-	if (rcvd_command == COMMAND_READ_GPIO_DIGITAL) {
-		//SWITCH ON THE BASE OF GPIO NUM READ GPIO DIGITAL
-		uint8_t GPIO_STATE = Read_Gpio_Digital(Actutate_GPIO);
-	}
-
-	if (rcvd_command == COMMAND_READ_GPIO_ANALOG) {
-		//SWITCH ON THE BASE OF GPIO NUM READ GPIO ANALOG
-		uint32_t Analog_Value = Read_GPIO_ANALOG(Actutate_GPIO);
 	}
 	if (rcvd_command == COMMAND_WRITE_RELAYS) {
 		//SWITCH ON THE BASE OF GPIO NUM READ GPIO ANALOG
@@ -163,6 +161,47 @@ void Manage_NRF_Data(void) {
 		default:
 			break;
 		}
+	}
+	if ((rcvd_command == COMMAND_READ_GPIO_DIGITAL)
+			|| (rcvd_command == COMMAND_READ_GPIO_ANALOG)) {
+		//RETURN DATA FOR READ COMMAND
+		char Final_Return_String[32];
+		memcpy(Final_Return_String, my_node_id, 2);	//copy the node id into it
+		Final_Return_String[2] = received_data_from_gateway[2];	//copy the command as its 3rd byte
+		Final_Return_String[3] = received_data_from_gateway[3];	//GPIO NUM 0
+		Final_Return_String[4] = received_data_from_gateway[4];	//GPIO NUM 1
+		if (rcvd_command == COMMAND_READ_GPIO_DIGITAL) {
+			//SWITCH ON THE BASE OF GPIO NUM READ GPIO DIGITAL
+			uint8_t GPIO_STATE = Read_Gpio_Digital(Actutate_GPIO);
+
+			if (GPIO_STATE) {
+				Final_Return_String[5] = '1';
+			} else {
+				Final_Return_String[5] = '0';
+			}
+		} else if (rcvd_command == COMMAND_READ_GPIO_ANALOG) {
+			//SWITCH ON THE BASE OF GPIO NUM READ GPIO ANALOG
+
+			uint32_t Analog_Value = Read_GPIO_ANALOG(Actutate_GPIO);
+			//CONVERT UINT32_T INTO CHARACTER ARRAY AND COPY IT TO THE RETURN STRING
+			char str[20];
+			//The adc is of 12 bit, so the maximum value it can read is the 4096
+			//SCALE THE READING IN THE SCALE OF 0-12 VOLT
+			float Scaled_Value = ((float)Analog_Value / (float)4096);
+			Scaled_Value = Scaled_Value * 12.0;
+			sprintf(str, "%f", Scaled_Value);
+			Final_Return_String[5] = str[0];
+			Final_Return_String[6] = str[1];
+			Final_Return_String[7] = str[2];
+			Final_Return_String[8] = str[3];
+
+		}
+		Print_Debug_Data((char*) "\nReturning data ::> ");
+		Print_Debug_Data((char*) Final_Return_String);
+
+		Switch_to_Transmitt_mode();
+		Transmitt_reply_to_gateway(Final_Return_String);
+		Switch_to_Receiver_mode();
 	}
 }
 /*
@@ -198,8 +237,9 @@ int Get_PWM_Val_To_Write(char received_data_from_gateway[]) {
  @brief This function will read the (Digital) GPIO number of input series and will return its current state
  */
 uint8_t Read_Gpio_Digital(uint8_t GPIO_num) {
+
 	Choose_Channel(GPIO_num);  //SELECT THE MUX
-	//	Read Its Digital State
+//	Read Its Digital State
 	uint32_t ADC_VAL;
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, 10);
@@ -214,11 +254,33 @@ uint8_t Read_Gpio_Digital(uint8_t GPIO_num) {
 }
 uint32_t Read_GPIO_ANALOG(uint8_t GPIO_num) {
 	Choose_Channel(GPIO_num);  //SELECT THE MUX
-	//	Read Its Digital State
+//	Read Its Digital State
 	uint32_t ADC_VAL;
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, 10);
 	ADC_VAL = HAL_ADC_GetValue(&hadc1);
 	HAL_ADC_Stop(&hadc1);
 	return ADC_VAL;
+}
+void Transmitt_reply_to_gateway(char *msg) {
+	HAL_UART_Transmit(&huart1,
+			(uint8_t*) "\nTransmitting reply to gateway .. waiting for ack",
+			strlen("\nTransmitting reply to gateway .. waiting for ack"), 10);
+	char received_data_from_srvr1[40];
+	memcpy(received_data_from_srvr1, msg, 32);
+	for (int i = 0; i <= 10; i++) {
+		if (!NRF24_write(received_data_from_srvr1, 32)) {
+			NRF24_write(received_data_from_srvr1, 32);
+			HAL_UART_Transmit(&huart1, (uint8_t*) ".", strlen("."), 10);
+			HAL_Delay(400);
+		} else {
+			HAL_UART_Transmit(&huart1,
+					(uint8_t*) "\nReply Transmitted to gateway successfully",
+					strlen("\nReply Transmitted to gateway successfully"), 10);
+			return;
+		}
+	}
+	HAL_UART_Transmit(&huart1,
+			(uint8_t*) "\nTransmission Failed, No acknowledgement received",
+			strlen("\nTransmission Failed, No acknowledgement received"), 10);
 }
