@@ -125,6 +125,8 @@ int main(void) {
 		if (NRF24_available()) {
 			Manage_NRF_Data();
 		}
+		HAL_GPIO_TogglePin(LED_PC_13_GPIO_Port, LED_PC_13_Pin);
+		HAL_Delay(100);
 	}
 	/* USER CODE END 3 */
 }

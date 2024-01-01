@@ -89,11 +89,10 @@ void Manage_NRF_Data(void) {
 	 COMMAND_READ_GPIO_ANALOG = 3,
 	 COMMAND_WRITE_RELAYS = 4
 	 */
+
 	char rcvd_node_id[2];
 	uint8_t rcvd_command;
-
 	rcvd_command = received_data_from_gateway[2] - '0';
-
 	memcpy(rcvd_node_id, received_data_from_gateway, 2);
 	//============CHECK IF NODE MATCH WITH ID======================//
 	if (!(memcmp(rcvd_node_id, my_node_id, 2))) {
@@ -270,7 +269,6 @@ void Transmitt_reply_to_gateway(char *msg) {
 	memcpy(received_data_from_srvr1, msg, 32);
 	for (int i = 0; i <= 10; i++) {
 		if (!NRF24_write(received_data_from_srvr1, 32)) {
-			NRF24_write(received_data_from_srvr1, 32);
 			HAL_UART_Transmit(&huart1, (uint8_t*) ".", strlen("."), 10);
 			HAL_Delay(400);
 		} else {
